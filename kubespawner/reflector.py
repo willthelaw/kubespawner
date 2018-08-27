@@ -4,6 +4,7 @@ from concurrent.futures import Future
 
 import time
 import threading
+import os
 
 from traitlets.config import LoggingConfigurable
 from traitlets import Any, Dict, Int, Unicode
@@ -139,7 +140,6 @@ class NamespacedResourceReflector(LoggingConfigurable):
         Overwrites all current resource info.
         """
         initial_resources = getattr(self.api, self.list_method_name)(
-            self.namespace,
             label_selector=self.label_selector,
             field_selector=self.field_selector,
             _request_timeout=self.request_timeout,
@@ -186,16 +186,25 @@ class NamespacedResourceReflector(LoggingConfigurable):
             "watching for %s with %s in namespace %s",
             self.kind, log_selector, self.namespace,
         )
+
+
         while True:
             self.log.debug("Connecting %s watcher", self.kind)
             w = watch.Watch()
             try:
+                #try getting everything
+
+                ret = self.api.list_pod_for_all_namespaces(label_selector="app=jupyterhub,component=singleuser-server",watch=False)
+                for i in ret.items:
+                    self.log.info("%s\t%s\t%s\t%s" % (i.status.pod_ip, i.metadata.namespace, i.metadata.name, i.metadata.labels))
+
                 resource_version = self._list_and_update()
                 if not self.first_load_future.done():
                     # signal that we've loaded our initial data
                     self.first_load_future.set_result(None)
+                # removed from watch.args:
+                #    'namespace': self.namespace,
                 watch_args = {
-                    'namespace': self.namespace,
                     'label_selector': self.label_selector,
                     'field_selector': self.field_selector,
                     'resource_version': resource_version,

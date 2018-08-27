@@ -43,7 +43,8 @@ class PodReflector(NamespacedResourceReflector):
         'component': 'singleuser-server',
     }
 
-    list_method_name = 'list_namespaced_pod'
+    #was list_namespaced_pod, changed to list_pod_for_all_namespaces to list everything
+    list_method_name = 'list_pod_for_all_namespaces'
 
     @property
     def pods(self):
@@ -53,7 +54,8 @@ class PodReflector(NamespacedResourceReflector):
 class EventReflector(NamespacedResourceReflector):
     kind = 'events'
 
-    list_method_name = 'list_namespaced_event'
+    #was list_namespaced_event
+    list_method_name = 'list_event_for_all_namespaces'
 
     @property
     def events(self):
@@ -138,6 +140,7 @@ class KubeSpawner(Spawner):
         # runs during both test and normal execution
         self.pod_name = self._expand_user_properties(self.pod_name_template)
         self.pvc_name = self._expand_user_properties(self.pvc_name_template)
+        self.namespace = self._expand_user_properties(self.namespace_template)
         if self.port == 0:
             # Our default port is 8888
             self.port = 8888
@@ -164,6 +167,16 @@ class KubeSpawner(Spawner):
 
         Disable if these events are not desirable
         or to save some performance cost.
+        """
+    )
+
+    namespace_template = Unicode(
+        '{username}',
+        config=True,
+        help="""
+        Kubernetes namespace to spawn user pods inself.
+        Super dumb approach assumes namespace and username are same.
+
         """
     )
 
@@ -431,7 +444,7 @@ class KubeSpawner(Spawner):
         specified in image_spec if it already exists, except if the tag
         is `:latest`. For more information on image pull policy,
         refer to `the Kubernetes documentation <https://kubernetes.io/docs/concepts/containers/images/>`__.
-        
+
 
         This configuration is primarily used in development if you are
         actively changing the `image_spec` and would like to pull the image
